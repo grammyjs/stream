@@ -5,7 +5,7 @@
     "author": "KnorpelSenf",
     "license": "MIT",
     "engines": {
-        "node": "^12.20.0 || >=14.13.1"
+        "node": ">=22"
     },
     "homepage": "https://grammy.dev/plugins/stream",
     "repository": {
@@ -19,8 +19,11 @@
     "peerDependencies": {
         "grammy": "^1.39.0"
     },
+    "dependencies": {
+        "abort-controller": "^3.0.0"
+    },
     "devDependencies": {
-        "@types/node": "^12.20.55",
+        "@types/node": "^22.19.3",
         "deno2node": "^1.16.0"
     },
     "files": [

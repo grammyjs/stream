@@ -12,7 +12,12 @@
         "module": "commonjs",
         "outDir": "./out/",
         "skipLibCheck": true,
-        "target": "es2019"
+        "target": "es2024"
     },
-    "include": ["src/"]
+    "include": [
+        "src/"
+    ],
+    "deno2node": {
+        "shim": "./src/shim.node.ts"
+    }
 }
