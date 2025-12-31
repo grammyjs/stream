@@ -37,7 +37,7 @@ export type StreamFlavor<C extends Context> = C & StreamContextExtension;
 export interface StreamContextExtension {
     api: {
         /**
-         * Use this message to stream an iterator of message pieces to a private
+         * Use this method to stream an iterator of message pieces to a private
          * chat. This is a convenience method built on top of `sendMessage` and
          * `sendMessageDraft`. Returns an array of sent message objects.
          *
@@ -113,7 +113,7 @@ export interface StreamContextExtension {
         ): Promise<Message.TextMessage[]>;
     };
     /**
-     * Use this message to stream an iterator of message pieces to the current
+     * Use this method to stream an iterator of message pieces to the current
      * private chat. This is a convenience method built on top of `sendMessage`
      * and `sendMessageDraft`. Returns an array of sent message objects.
      *
