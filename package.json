@@ -1,7 +1,7 @@
 {
     "name": "@grammyjs/stream",
     "description": "Stream long text messages to Telegram",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "author": "KnorpelSenf",
     "license": "MIT",
     "engines": {
