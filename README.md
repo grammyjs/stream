@@ -45,7 +45,7 @@ For example, if you use the [AI SDK](https://ai-sdk.dev), your AI setup could lo
 
 ```ts
 import { streamText } from "ai";
-import { google } from "npm:@ai-sdk/google";
+import { google } from "@ai-sdk/google";
 
 bot.command("credits", async (ctx) => {
     // Send prompt to LLM:
