@@ -209,8 +209,7 @@ export interface StreamOptions<C extends Context> {
  * 1. `ctx.replyWithStream`: stream a message to the current chat
  * 2. `ctx.api.streamMessage`: stream a message to any chat
  *
- * Consider installing the [parse-mode
- * plugin](https://grammy.dev/plugins/parse-mode) _before_ this plugin. This
+ * Consider installing the [auto-retry](https://grammy.dev/plugins/auto-retry) _before_ this plugin. This
  * will make sure that streaming messages does not crash due to rate limits.
  *
  * @param options Optional options object for this plugin
