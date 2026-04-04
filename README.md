@@ -6,6 +6,8 @@ Automatically split long text across several messages.
 
 ## Quickstart
 
+Here is a quickstart for you, but be sure to check out [the real documentation on the website](https://grammy.dev/plugins/stream).
+
 Run `npm i grammy @grammyjs/stream @grammyjs/auto-retry` and paste the following code:
 
 ```ts
