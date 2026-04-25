@@ -376,7 +376,7 @@ export function streamApi(
                                 chat_id,
                                 draft_id: draft.id,
                                 text: draft.text,
-                                entities: draft.entities,
+                                entities: [...draft.entities], // copy because it is consurrently mutable
                                 ...otherMessageDraft,
                             }, signal);
                             continue;
