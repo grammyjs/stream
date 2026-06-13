@@ -13,8 +13,13 @@ interface RawApiStub {
     drafts: Parameters<RawApi["sendMessageDraft"]>[0][];
     messages: Parameters<RawApi["sendMessage"]>[0][];
 
+    richDrafts: Parameters<RawApi["sendRichMessageDraft"]>[0][];
+    richMessages: Parameters<RawApi["sendRichMessage"]>[0][];
+
     resolveDraft(final?: "final"): void;
     resolveMessage(final?: "final"): void;
+
+    reset(): void;
 
     stub: RawApi;
 }
@@ -39,17 +44,29 @@ function stubRawApi(options: {
         drafts: [],
         messages: [],
 
-        resolveDraft(final?: "final") {
+        richDrafts: [],
+        richMessages: [],
+
+        resolveDraft(final) {
             draftLock.resolve();
             if (final !== "final") {
                 draftLock = Promise.withResolvers();
             }
         },
-        resolveMessage(final?: "final") {
+        resolveMessage(final) {
             messageLock.resolve();
             if (final !== "final") {
                 messageLock = Promise.withResolvers();
             }
+        },
+
+        reset() {
+            stub.drafts = [];
+            stub.messages = [];
+            stub.richDrafts = [];
+            stub.richMessages = [];
+            draftLock = Promise.withResolvers();
+            messageLock = Promise.withResolvers();
         },
 
         stub: {
@@ -66,6 +83,19 @@ function stubRawApi(options: {
                 stub.messages.push(structuredClone(params));
                 return { message_id } as Message.TextMessage;
             },
+            async sendRichMessageDraft(params) {
+                if (draftError) throw draftError;
+                if (blockDraft) await draftLock.promise;
+                stub.richDrafts.push(structuredClone(params));
+                return true;
+            },
+            async sendRichMessage(params) {
+                if (messageError) throw messageError;
+                if (blockMessage) await messageLock.promise;
+                const message_id = stub.richMessages.length;
+                stub.richMessages.push(structuredClone(params));
+                return { message_id } as Message.TextMessage;
+            },
         } as RawApi,
     };
     return stub;
@@ -73,21 +103,39 @@ function stubRawApi(options: {
 
 describe("streamApi", () => {
     it("works on empty streams", async () => {
-        const { drafts, messages, stub } = stubRawApi();
+        const { drafts, richDrafts, messages, richMessages, stub, reset } =
+            stubRawApi();
         const plugin = streamApi(stub);
         await plugin.streamMessage(0, 0, []);
         assertEquals(drafts.length, 0);
         assertEquals(messages.length, 0);
+        reset();
+        await plugin.streamMarkdown(0, 0, []);
+        assertEquals(richDrafts.length, 0);
+        assertEquals(richMessages.length, 0);
+        reset();
+        await plugin.streamHtml(0, 0, []);
+        assertEquals(richDrafts.length, 0);
+        assertEquals(richMessages.length, 0);
     });
 
     it("handles a single chunk without entities", async () => {
-        const { drafts, messages, stub } = stubRawApi();
+        const { drafts, richDrafts, messages, richMessages, stub, reset } =
+            stubRawApi();
         const plugin = streamApi(stub);
         await plugin.streamMessage(0, 0, ["Hello, world!"]);
         assertEquals(drafts.length, 1);
         assertEquals(messages.length, 1);
         assertEquals(messages[0].text, "Hello, world!");
         assertEquals(messages[0].entities, []);
+        await plugin.streamMarkdown(0, 0, ["Hello, world!"]);
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].rich_message.markdown, "Hello, world!");
+        await plugin.streamHtml(0, 0, ["Hello, world!"]);
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].rich_message.html, "Hello, world!");
     });
 
     it("handles a single chunk with entities", async () => {
@@ -299,7 +347,7 @@ describe("streamApi", () => {
         // and skip others due to slow message sending
         assertEquals(drafts.length, 80);
         for (let i = 0; i < 80; i++) {
-            assert(drafts[i].text.length % 100 === 0);
+            assert((drafts[i].text?.length ?? -1) % 100 === 0);
         }
         assertEquals(messages.length, 3);
         assertEquals(messages[0].text.length, 4000);
@@ -308,9 +356,15 @@ describe("streamApi", () => {
     });
 
     it("handles fast chunk generation with slow draft sending", async () => {
-        const { drafts, messages, stub, resolveDraft } = stubRawApi({
-            blockDraft: true,
-        });
+        const {
+            drafts,
+            richDrafts,
+            messages,
+            richMessages,
+            stub,
+            reset,
+            resolveDraft,
+        } = stubRawApi({ blockDraft: true });
         const plugin = streamApi(stub);
 
         async function* stream() {
@@ -353,6 +407,33 @@ describe("streamApi", () => {
         assertEquals(messages[0].text.length, 4000);
         assertEquals(messages[1].text.length, 4000);
         assertEquals(messages[2].text.length, 2000);
+
+        reset();
+        await plugin.streamMarkdown(0, 0, stream());
+        // send 4 drafts for the following chunks: first, 51st, 91st, last (there are 40 iterations per message)
+        assertEquals(richDrafts.length, 4);
+        assertEquals(richDrafts[0], {
+            chat_id: 0,
+            draft_id: 0,
+            text: "a".repeat(100), // i = 1, first draft is sent immediately
+        });
+        assertEquals(richDrafts[1], {
+            chat_id: 0,
+            draft_id: 0,
+            text: "a".repeat(5100), // i = 51, accumulated all chunks
+        });
+        assertEquals(richDrafts[2], {
+            chat_id: 0,
+            draft_id: 0,
+            text: "a".repeat(9100), // i = 91, accumulated all chunks
+        });
+        assertEquals(richDrafts[3], {
+            chat_id: 0,
+            draft_id: 0,
+            text: "a".repeat(10000), // i = 100, called after the last chunks was collected ("final")
+        });
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].rich_message.markdown.length, 10000);
     });
 
     it("handles fast chunk generation with slow message and draft sending", async () => {
@@ -387,12 +468,13 @@ describe("streamApi", () => {
     });
 
     it("handles empty chunks", async () => {
-        const { drafts, messages, stub } = stubRawApi();
+        const { drafts, richDrafts, messages, richMessages, stub, reset } =
+            stubRawApi();
         const plugin = streamApi(stub);
 
         const chunks = ["Hello", "", "World", "", ""];
-        await plugin.streamMessage(0, 0, chunks);
 
+        await plugin.streamMessage(0, 0, chunks);
         assertEquals(drafts.length, chunks.length);
         assertEquals(drafts[0].text, "Hello");
         assertEquals(drafts[1].text, "Hello");
@@ -401,20 +483,33 @@ describe("streamApi", () => {
         assertEquals(drafts[4].text, "HelloWorld");
         assertEquals(messages.length, 1);
         assertEquals(messages[0].text, "HelloWorld");
+
+        reset();
+
+        await plugin.streamMarkdown(0, 0, chunks);
+        assertEquals(richDrafts.length, chunks.length);
+        assertEquals(richDrafts[0].rich_message.markdown, "Hello");
+        assertEquals(richDrafts[1].rich_message.markdown, "Hello");
+        assertEquals(richDrafts[2].rich_message.markdown, "HelloWorld");
+        assertEquals(richDrafts[3].rich_message.markdown, "HelloWorld");
+        assertEquals(richDrafts[4].rich_message.markdown, "HelloWorld");
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].richMessages.markdown, "HelloWorld");
     });
 
     it("handles errors from sendMessageDraft", async () => {
         const error = new Error("Draft sending failed");
-        const { stub } = stubRawApi({ draftError: error });
+        const { stub, reset } = stubRawApi({ draftError: error });
         const plugin = streamApi(stub);
 
-        const chunks = [
-            { draft_id: 0, text: "A" },
-            { draft_id: 1, text: "B" },
-        ];
-
         await assertRejects(
-            async () => await plugin.streamMessage(0, 0, chunks),
+            async () => await plugin.streamMessage(0, 0, ["A", "B"]),
+            Error,
+            "Draft sending failed",
+        );
+        reset();
+        await assertRejects(
+            async () => await plugin.streamMarkdown(0, 0, ["A", "B"]),
             Error,
             "Draft sending failed",
         );
@@ -425,10 +520,13 @@ describe("streamApi", () => {
         const { stub } = stubRawApi({ messageError: error });
         const plugin = streamApi(stub);
 
-        const chunks = ["Hello", "World"];
-
         await assertRejects(
-            async () => await plugin.streamMessage(0, 0, chunks),
+            async () => await plugin.streamMessage(0, 0, ["Hello", "World"]),
+            Error,
+            "Message sending failed",
+        );
+        await assertRejects(
+            async () => await plugin.streamMessage(0, 0, ["Hello", "World"]),
             Error,
             "Message sending failed",
         );
@@ -438,14 +536,19 @@ describe("streamApi", () => {
         const { stub } = stubRawApi();
         const plugin = streamApi(stub);
 
-        async function* errorStream(): AsyncGenerator<MessageDraftPiece> {
-            yield { draft_id: 0, text: "First" };
-            yield { draft_id: 1, text: "Second" };
+        async function* errorStream() {
+            yield "First";
+            yield "Second";
             throw new Error("Delayed stream error");
         }
 
         await assertRejects(
             async () => await plugin.streamMessage(0, 0, errorStream()),
+            Error,
+            "Delayed stream error",
+        );
+        await assertRejects(
+            async () => await plugin.streamMarkdown(0, 0, errorStream()),
             Error,
             "Delayed stream error",
         );
