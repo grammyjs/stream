@@ -1,6 +1,7 @@
 import {
     type ApiMethods,
     type Context,
+    type InputRichMessage,
     type Message,
     type MessageEntity,
     type MiddlewareFn,
@@ -153,7 +154,7 @@ export interface StreamContextExtension {
             >,
             baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
             signal?: AbortSignal,
-        ): Promise<Message.RichMessage>;
+        ): Promise<Message.RichMessageMessage>;
         /**
          * Use this method to stream an iterator of rich markdown message pieces
          * to a private chat. Returns a rich message object.
@@ -196,7 +197,7 @@ export interface StreamContextExtension {
             >,
             baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
             signal?: AbortSignal,
-        ): Promise<Message.RichMessage>;
+        ): Promise<Message.RichMessageMessage>;
     };
     /**
      * Use this method to stream an iterator of message pieces to the current
@@ -316,9 +317,9 @@ export interface StreamContextExtension {
             Parameters<ApiMethods["sendRichMessage"]>[0],
             "chat_id" | "rich_message"
         >,
-        baseInputRichMessage: Omit<InputRichMessage, "markdown" | "html">,
+        baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
         signal?: AbortSignal,
-    ): Promise<Message.RichMessage>;
+    ): Promise<Message.RichMessageMessage>;
     /**
      * Use this method to stream an iterator of rich HTML message pieces to a
      * private chat. Returns a rich message object.
@@ -360,9 +361,9 @@ export interface StreamContextExtension {
             Parameters<ApiMethods["sendRichMessage"]>[0],
             "chat_id" | "rich_message"
         >,
-        baseInputRichMessage: Omit<InputRichMessage, "markdown" | "html">,
+        baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
         signal?: AbortSignal,
-    ): Promise<Message.RichMessage>;
+    ): Promise<Message.RichMessageMessage>;
 }
 
 /** Collection of options for the stream plugin */
@@ -536,12 +537,12 @@ export function streamApi(
             signal,
         ) {
             return await streamRichMessage(
+                (markdown) => ({ ...baseInputRichMessage, markdown }),
                 chat_id,
                 draft_id,
                 stream,
                 otherRichMessageDraft,
                 otherRichMessage,
-                (markdown) => ({ ...baseInputRichMessage, markdown }),
                 signal,
             );
         },
@@ -555,12 +556,12 @@ export function streamApi(
             signal,
         ) {
             return await streamRichMessage(
+                (html) => ({ ...baseInputRichMessage, html }),
                 chat_id,
                 draft_id,
                 stream,
                 otherRichMessageDraft,
                 otherRichMessage,
-                (html) => ({ ...baseInputRichMessage, html }),
                 signal,
             );
         },
@@ -575,21 +576,21 @@ export function streamApi(
      * sends a message on exit (stream exhausted).
      */
     async function streamRichMessage(
+        buildInputRichMessage: (markdownOrHtml: string) => InputRichMessage,
         chat_id: number,
         draft_id: number,
         stream:
             | Iterable<string>
             | AsyncIterable<string>,
-        otherRichMessageDraft: Omit<
+        otherRichMessageDraft?: Omit<
             Parameters<ApiMethods["sendRichMessageDraft"]>[0],
             "chat_id" | "draft_id" | "rich_message"
         >,
-        otherRichMessage: Omit<
+        otherRichMessage?: Omit<
             Parameters<ApiMethods["sendRichMessage"]>[0],
             "chat_id" | "rich_message"
         >,
-        buildInputRichMessage: (markdownOrHtml: string) => InputRichMessage,
-        signal: AbortSignal | undefined,
+        signal?: AbortSignal | undefined,
     ) {
         let latest: string | undefined = undefined; // present if a new draft is available
 
