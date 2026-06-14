@@ -61,10 +61,10 @@ function stubRawApi(options: {
         },
 
         reset() {
-            stub.drafts = [];
-            stub.messages = [];
-            stub.richDrafts = [];
-            stub.richMessages = [];
+            stub.drafts.length = 0;
+            stub.messages.length = 0;
+            stub.richDrafts.length = 0;
+            stub.richMessages.length = 0;
             draftLock = Promise.withResolvers();
             messageLock = Promise.withResolvers();
         },
@@ -94,7 +94,7 @@ function stubRawApi(options: {
                 if (blockMessage) await messageLock.promise;
                 const message_id = stub.richMessages.length;
                 stub.richMessages.push(structuredClone(params));
-                return { message_id } as Message.TextMessage;
+                return { message_id } as Message.RichMessageMessage;
             },
         } as RawApi,
     };
@@ -111,29 +111,45 @@ describe("streamApi", () => {
         assertEquals(messages.length, 0);
         reset();
         await plugin.streamMarkdown(0, 0, []);
-        assertEquals(richDrafts.length, 0);
-        assertEquals(richMessages.length, 0);
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts[0].rich_message.markdown, "");
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].rich_message.markdown, "");
         reset();
         await plugin.streamHtml(0, 0, []);
-        assertEquals(richDrafts.length, 0);
-        assertEquals(richMessages.length, 0);
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts[0].rich_message.html, "");
+        assertEquals(richMessages.length, 1);
+        assertEquals(richMessages[0].rich_message.html, "");
     });
 
     it("handles a single chunk without entities", async () => {
         const { drafts, richDrafts, messages, richMessages, stub, reset } =
             stubRawApi();
         const plugin = streamApi(stub);
+
         await plugin.streamMessage(0, 0, ["Hello, world!"]);
         assertEquals(drafts.length, 1);
+        assertEquals(drafts[0].text, "Hello, world!");
         assertEquals(messages.length, 1);
         assertEquals(messages[0].text, "Hello, world!");
         assertEquals(messages[0].entities, []);
+
+        reset();
+
         await plugin.streamMarkdown(0, 0, ["Hello, world!"]);
-        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts.length, 2);
+        assertEquals(richDrafts[0].rich_message.markdown, "");
+        assertEquals(richDrafts[1].rich_message.markdown, "Hello, world!");
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.markdown, "Hello, world!");
+
+        reset();
+
         await plugin.streamHtml(0, 0, ["Hello, world!"]);
-        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts.length, 2);
+        assertEquals(richDrafts[0].rich_message.html, "");
+        assertEquals(richDrafts[1].rich_message.html, "Hello, world!");
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.html, "Hello, world!");
     });
@@ -174,7 +190,7 @@ describe("streamApi", () => {
             // confirm remaining calls
             for (const draft of drafts) {
                 assertEquals(draft.chat_id, 0);
-                assertMatch(draft.text, /a+/);
+                assertMatch(draft.text ?? "", /a+/);
                 assertEquals(draft.entities, []);
             }
             assertEquals(drafts[0].draft_id, firstDraftId);
@@ -409,31 +425,29 @@ describe("streamApi", () => {
         assertEquals(messages[2].text.length, 2000);
 
         reset();
+
         await plugin.streamMarkdown(0, 0, stream());
-        // send 4 drafts for the following chunks: first, 51st, 91st, last (there are 40 iterations per message)
-        assertEquals(richDrafts.length, 4);
+        // send 3 drafts for the following chunks: setup, first, 91st, last (there are 40 iterations per message)
+        assertEquals(richDrafts.length, 3);
         assertEquals(richDrafts[0], {
             chat_id: 0,
             draft_id: 0,
-            text: "a".repeat(100), // i = 1, first draft is sent immediately
+            rich_message: { markdown: "" }, // initial thinking status
         });
+        // simply skips over i=51 (no message splitting)
         assertEquals(richDrafts[1], {
             chat_id: 0,
             draft_id: 0,
-            text: "a".repeat(5100), // i = 51, accumulated all chunks
+            rich_message: { markdown: "a".repeat(5100) }, // i = 51
         });
         assertEquals(richDrafts[2], {
             chat_id: 0,
             draft_id: 0,
-            text: "a".repeat(9100), // i = 91, accumulated all chunks
+            rich_message: { markdown: "a".repeat(9100) }, // i = 91
         });
-        assertEquals(richDrafts[3], {
-            chat_id: 0,
-            draft_id: 0,
-            text: "a".repeat(10000), // i = 100, called after the last chunks was collected ("final")
-        });
+        // directly sends full message
         assertEquals(richMessages.length, 1);
-        assertEquals(richMessages[0].rich_message.markdown.length, 10000);
+        assertEquals(richMessages[0].rich_message.markdown?.length ?? 0, 10000);
     });
 
     it("handles fast chunk generation with slow message and draft sending", async () => {
@@ -487,14 +501,15 @@ describe("streamApi", () => {
         reset();
 
         await plugin.streamMarkdown(0, 0, chunks);
-        assertEquals(richDrafts.length, chunks.length);
-        assertEquals(richDrafts[0].rich_message.markdown, "Hello");
+        assertEquals(richDrafts.length, 1 + chunks.length);
+        assertEquals(richDrafts[0].rich_message.markdown, "");
         assertEquals(richDrafts[1].rich_message.markdown, "Hello");
-        assertEquals(richDrafts[2].rich_message.markdown, "HelloWorld");
+        assertEquals(richDrafts[2].rich_message.markdown, "Hello");
         assertEquals(richDrafts[3].rich_message.markdown, "HelloWorld");
         assertEquals(richDrafts[4].rich_message.markdown, "HelloWorld");
+        assertEquals(richDrafts[5].rich_message.markdown, "HelloWorld");
         assertEquals(richMessages.length, 1);
-        assertEquals(richMessages[0].richMessages.markdown, "HelloWorld");
+        assertEquals(richMessages[0].rich_message.markdown ?? "", "HelloWorld");
     });
 
     it("handles errors from sendMessageDraft", async () => {
