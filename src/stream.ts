@@ -651,6 +651,11 @@ export function streamApi(
             } finally {
                 running = false;
             }
+            // Flush any final data that arrived after the last draft was sent
+            if (latest !== undefined) {
+                draft = latest;
+                latest = undefined;
+            }
             return await rawApi.sendRichMessage({
                 chat_id,
                 rich_message: buildInputRichMessage(draft),
