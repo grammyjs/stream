@@ -410,6 +410,7 @@ export function stream<C extends Context>(
         ctx.api.streamMessage = streamMessageApi;
         ctx.api.streamMarkdown = streamMarkdownApi;
         ctx.api.streamHtml = streamHtmlApi;
+        ctx.api.streamMessage = streamMessageApi;
         ctx.replyWithStream = async function streamMessage(
             stream,
             otherMessageDraft,
@@ -621,14 +622,6 @@ export function streamApi(
         }
 
         async function push() {
-            // Immediately display thinking placeholder
-            await rawApi.sendRichMessageDraft({
-                chat_id,
-                draft_id,
-                rich_message: buildInputRichMessage(""),
-                ...otherRichMessageDraft,
-            });
-            // Now pull items from stream
             let draft = "";
             try {
                 while (!exhausted) {
