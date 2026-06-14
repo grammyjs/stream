@@ -621,10 +621,11 @@ export function streamApi(
         }
 
         async function push() {
+            let draft = "";
             try {
                 while (!exhausted) {
                     if (latest !== undefined) {
-                        const draft = latest;
+                        draft = latest;
                         latest = undefined;
                         await rawApi.sendRichMessageDraft({
                             chat_id,
@@ -644,8 +645,7 @@ export function streamApi(
             }
             return await rawApi.sendRichMessage({
                 chat_id,
-                draft_id,
-                rich_message: buildInputRichMessage(latest),
+                rich_message: buildInputRichMessage(draft),
                 ...otherRichMessage,
             }, signal);
         }
