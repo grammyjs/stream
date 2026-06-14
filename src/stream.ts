@@ -156,8 +156,8 @@ export interface StreamContextExtension {
             signal?: AbortSignal,
         ): Promise<Message.RichMessageMessage>;
         /**
-         * Use this method to stream an iterator of rich markdown message pieces
-         * to a private chat. Returns a rich message object.
+         * Use this method to stream an iterator of rich HTML message pieces to
+         * a private chat. Returns a rich message object.
          *
          * This is a convenience method built on top of `sendRichMessage` and
          * `sendRichMessageDraft`. The former method is called once given
