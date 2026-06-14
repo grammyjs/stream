@@ -2,10 +2,10 @@ export {
     type Context,
     type MiddlewareFn,
     type RawApi,
-} from "https://deno.land/x/grammy@v1.44.0/mod.ts";
+} from "https://lib.deno.dev/x/grammy@v1/mod.ts";
 export type {
     ApiMethods,
     InputRichMessage,
     Message,
     MessageEntity,
-} from "https://deno.land/x/grammy@v1.44.0/types.ts";
+} from "https://lib.deno.dev/x/grammy@v1/types.ts";
