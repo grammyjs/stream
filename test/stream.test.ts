@@ -29,13 +29,23 @@ function stubRawApi(options: {
     blockMessage?: boolean;
     draftError?: Error;
     messageError?: Error;
+    noClone?: boolean;
 } = {}): RawApiStub {
     const {
         blockDraft = false,
         blockMessage = false,
         draftError,
         messageError,
+        noClone = false,
     } = options;
+
+    // Record payloads by reference instead of cloning them. This mirrors a
+    // client (such as the auto-retry plugin) that keeps the payload object
+    // around and re-serializes it on retry, which makes later mutations of a
+    // payload observable.
+    function record<T>(params: T): T {
+        return noClone ? params : structuredClone(params);
+    }
 
     let draftLock = Promise.withResolvers<void>();
     let messageLock = Promise.withResolvers<void>();
@@ -73,27 +83,27 @@ function stubRawApi(options: {
             async sendMessageDraft(params) {
                 if (draftError) throw draftError;
                 if (blockDraft) await draftLock.promise;
-                stub.drafts.push(structuredClone(params));
+                stub.drafts.push(record(params));
                 return true;
             },
             async sendMessage(params) {
                 if (messageError) throw messageError;
                 if (blockMessage) await messageLock.promise;
                 const message_id = stub.messages.length;
-                stub.messages.push(structuredClone(params));
+                stub.messages.push(record(params));
                 return { message_id } as Message.TextMessage;
             },
             async sendRichMessageDraft(params) {
                 if (draftError) throw draftError;
                 if (blockDraft) await draftLock.promise;
-                stub.richDrafts.push(structuredClone(params));
+                stub.richDrafts.push(record(params));
                 return true;
             },
             async sendRichMessage(params) {
                 if (messageError) throw messageError;
                 if (blockMessage) await messageLock.promise;
                 const message_id = stub.richMessages.length;
-                stub.richMessages.push(structuredClone(params));
+                stub.richMessages.push(record(params));
                 return { message_id } as Message.RichMessageMessage;
             },
         } as RawApi,
@@ -279,6 +289,61 @@ describe("streamApi", () => {
             text: "c".repeat(200), // Third chunk
             entities: [{ type: "code", offset: 0, length: 200 }],
         });
+    });
+
+    it("does not mutate the entities of already-sent drafts", async () => {
+        // A client such as the auto-retry plugin keeps the payload object and
+        // re-serializes it on retry. If the plugin mutated the entities array
+        // of a draft after handing it off, a retry would send the original
+        // (shorter) text together with grown entities, crashing with
+        // "entity begins after the end of the text". Recording payloads by
+        // reference (no clone) lets us observe such mutations.
+        const { drafts, stub } = stubRawApi({ noClone: true });
+        const plugin = streamApi(stub);
+
+        async function* chunks(): AsyncGenerator<MessageDraftPiece> {
+            for (let i = 0; i < 5; i++) {
+                yield {
+                    text: "a".repeat(10),
+                    entities: [{ type: "code", offset: i * 10, length: 10 }],
+                };
+                await new Promise((r) => setTimeout(r, 0)); // force push loop iterations
+            }
+        }
+
+        await plugin.streamMessage(0, 0, chunks());
+
+        assertEquals(drafts.length, 5);
+        assertEquals(drafts[0].text, "a".repeat(10));
+        assertEquals(drafts[0].entities, [
+            { type: "code", offset: 0, length: 10 },
+        ]);
+        assertEquals(drafts[1].text, "a".repeat(20));
+        assertEquals(drafts[1].entities, [
+            { type: "code", offset: 0, length: 10 },
+            { type: "code", offset: 10, length: 10 },
+        ]);
+        assertEquals(drafts[2].text, "a".repeat(30));
+        assertEquals(drafts[2].entities, [
+            { type: "code", offset: 0, length: 10 },
+            { type: "code", offset: 10, length: 10 },
+            { type: "code", offset: 20, length: 10 },
+        ]);
+        assertEquals(drafts[3].text, "a".repeat(40));
+        assertEquals(drafts[3].entities, [
+            { type: "code", offset: 0, length: 10 },
+            { type: "code", offset: 10, length: 10 },
+            { type: "code", offset: 20, length: 10 },
+            { type: "code", offset: 30, length: 10 },
+        ]);
+        assertEquals(drafts[4].text, "a".repeat(50));
+        assertEquals(drafts[4].entities, [
+            { type: "code", offset: 0, length: 10 },
+            { type: "code", offset: 10, length: 10 },
+            { type: "code", offset: 20, length: 10 },
+            { type: "code", offset: 30, length: 10 },
+            { type: "code", offset: 40, length: 10 },
+        ]);
     });
 
     it("handles many chunks with custom draft_id values and entities", async () => {
