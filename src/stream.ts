@@ -732,7 +732,9 @@ export function streamApi(
                 } else if (accumulator.id === draft.id) {
                     // same draft_id as last chunk
                     accumulator.text += draft.text;
-                    accumulator.entities.push(...draft.entities);
+                    accumulator.entities = accumulator.entities.concat(
+                        draft.entities,
+                    );
                 } else {
                     // different draft_id than last chunk
                     complete.push(accumulator);
