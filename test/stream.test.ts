@@ -111,14 +111,12 @@ describe("streamApi", () => {
         assertEquals(messages.length, 0);
         reset();
         await plugin.streamMarkdown(0, 0, []);
-        assertEquals(richDrafts.length, 1);
-        assertEquals(richDrafts[0].rich_message.markdown, "");
+        assertEquals(richDrafts.length, 0);
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.markdown, "");
         reset();
         await plugin.streamHtml(0, 0, []);
-        assertEquals(richDrafts.length, 1);
-        assertEquals(richDrafts[0].rich_message.html, "");
+        assertEquals(richDrafts.length, 0);
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.html, "");
     });
@@ -138,18 +136,16 @@ describe("streamApi", () => {
         reset();
 
         await plugin.streamMarkdown(0, 0, ["Hello, world!"]);
-        assertEquals(richDrafts.length, 2);
-        assertEquals(richDrafts[0].rich_message.markdown, "");
-        assertEquals(richDrafts[1].rich_message.markdown, "Hello, world!");
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts[0].rich_message.markdown, "Hello, world!");
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.markdown, "Hello, world!");
 
         reset();
 
         await plugin.streamHtml(0, 0, ["Hello, world!"]);
-        assertEquals(richDrafts.length, 2);
-        assertEquals(richDrafts[0].rich_message.html, "");
-        assertEquals(richDrafts[1].rich_message.html, "Hello, world!");
+        assertEquals(richDrafts.length, 1);
+        assertEquals(richDrafts[0].rich_message.html, "Hello, world!");
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.html, "Hello, world!");
     });
@@ -427,14 +423,13 @@ describe("streamApi", () => {
         reset();
 
         await plugin.streamMarkdown(0, 0, stream());
-        // send 3 drafts for the following chunks: setup, first, 91st, last (there are 40 iterations per message)
+        // send 3 drafts for the following chunks: first, 51st, 91st
         assertEquals(richDrafts.length, 3);
         assertEquals(richDrafts[0], {
             chat_id: 0,
-            draft_id: 0,
-            rich_message: { markdown: "" }, // initial thinking status
+            draft_id: 0, // first message
+            rich_message: { markdown: "a".repeat(100) }, // i = 1, first draft is sent immediately
         });
-        // simply skips over i=51 (no message splitting)
         assertEquals(richDrafts[1], {
             chat_id: 0,
             draft_id: 0,
@@ -501,13 +496,12 @@ describe("streamApi", () => {
         reset();
 
         await plugin.streamMarkdown(0, 0, chunks);
-        assertEquals(richDrafts.length, 1 + chunks.length);
-        assertEquals(richDrafts[0].rich_message.markdown, "");
+        assertEquals(richDrafts.length, chunks.length);
+        assertEquals(richDrafts[0].rich_message.markdown, "Hello");
         assertEquals(richDrafts[1].rich_message.markdown, "Hello");
-        assertEquals(richDrafts[2].rich_message.markdown, "Hello");
+        assertEquals(richDrafts[2].rich_message.markdown, "HelloWorld");
         assertEquals(richDrafts[3].rich_message.markdown, "HelloWorld");
         assertEquals(richDrafts[4].rich_message.markdown, "HelloWorld");
-        assertEquals(richDrafts[5].rich_message.markdown, "HelloWorld");
         assertEquals(richMessages.length, 1);
         assertEquals(richMessages[0].rich_message.markdown ?? "", "HelloWorld");
     });

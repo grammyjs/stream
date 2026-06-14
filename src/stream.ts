@@ -410,7 +410,6 @@ export function stream<C extends Context>(
         ctx.api.streamMessage = streamMessageApi;
         ctx.api.streamMarkdown = streamMarkdownApi;
         ctx.api.streamHtml = streamHtmlApi;
-        ctx.api.streamMessage = streamMessageApi;
         ctx.replyWithStream = async function streamMessage(
             stream,
             otherMessageDraft,
