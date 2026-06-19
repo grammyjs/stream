@@ -2,7 +2,6 @@
 
 Stream long text messages to Telegram.
 Make LLM output appear as animated message drafts before sending the message.
-Automatically split long text across several messages.
 
 ## Quickstart
 
@@ -57,6 +56,8 @@ bot.command("credits", async (ctx) => {
     });
 
     // Automatically stream response with grammY:
-    await ctx.replyWithStream(textStream);
+    await ctx.replyWithMarkdownStream(textStream);
 });
 ```
+
+Consider including information about Telegram's [rich message formatting options](https://core.telegram.org/bots/api#rich-message-formatting-options) in your prompt if your LLM requires some guidance on this.

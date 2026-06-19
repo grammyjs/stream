@@ -1,6 +1,7 @@
 import {
     type ApiMethods,
     type Context,
+    type InputRichMessage,
     type Message,
     type MessageEntity,
     type MiddlewareFn,
@@ -111,6 +112,92 @@ export interface StreamContextExtension {
             >,
             signal?: AbortSignal,
         ): Promise<Message.TextMessage[]>;
+        /**
+         * Use this method to stream an iterator of rich markdown message pieces
+         * to a private chat. Returns a rich message object.
+         *
+         * This is a convenience method built on top of `sendRichMessage` and
+         * `sendRichMessageDraft`. The former method is called once given
+         * iterator completes, and the latter method is called many times while
+         * consuming the iterator and accumulating the strings.
+         *
+         * This method consumes the given iterator as fast as possible and
+         * updates the message draft as often as possible. If reading the next
+         * chunk of data is faster than the message draft can be updated, then
+         * some calls to `sendRichMessageDraft` are skipped. This integrates
+         * well with [the auto-retry
+         * plugin](https://grammy.dev/plugins/auto-retry) which converts rate
+         * limits into slower API calls. Make sure to install it before
+         * installing this plugin.
+         *
+         * @param chat_id Unique identifier for the target private chat
+         * @param draft_id Unique identifier of the message draft
+         * @param stream An iterator of message pieces with optional draft identifiers
+         * @param otherRichMessageDraft Optional remaining parameters for `sendRichMessageDraft` calls
+         * @param otherRichMessage Optional remaining parameters for `sendRichMessage` calls
+         * @param baseInputRichMessage Optional remaining fields of `rich_message` in all API calls
+         * @param signal Optional `AbortSignal` to cancel the request
+         */
+        streamMarkdown(
+            chat_id: number,
+            draft_id: number,
+            stream:
+                | Iterable<string>
+                | AsyncIterable<string>,
+            otherRichMessageDraft?: Omit<
+                Parameters<ApiMethods["sendRichMessageDraft"]>[0],
+                "chat_id" | "draft_id" | "rich_message"
+            >,
+            otherRichMessage?: Omit<
+                Parameters<ApiMethods["sendRichMessage"]>[0],
+                "chat_id" | "rich_message"
+            >,
+            baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
+            signal?: AbortSignal,
+        ): Promise<Message.RichMessageMessage>;
+        /**
+         * Use this method to stream an iterator of rich HTML message pieces to
+         * a private chat. Returns a rich message object.
+         *
+         * This is a convenience method built on top of `sendRichMessage` and
+         * `sendRichMessageDraft`. The former method is called once given
+         * iterator completes, and the latter method is called many times while
+         * consuming the iterator and accumulating the strings.
+         *
+         * This method consumes the given iterator as fast as possible and
+         * updates the message draft as often as possible. If reading the next
+         * chunk of data is faster than the message draft can be updated, then
+         * some calls to `sendRichMessageDraft` are skipped. This integrates
+         * well with [the auto-retry
+         * plugin](https://grammy.dev/plugins/auto-retry) which converts rate
+         * limits into slower API calls. Make sure to install it before
+         * installing this plugin.
+         *
+         * @param chat_id Unique identifier for the target private chat
+         * @param draft_id Unique identifier of the message draft
+         * @param stream An iterator of message pieces with optional draft identifiers
+         * @param otherRichMessageDraft Optional remaining parameters for `sendRichMessageDraft` calls
+         * @param otherRichMessage Optional remaining parameters for `sendRichMessage` calls
+         * @param baseInputRichMessage Optional remaining fields of `rich_message` in all API calls
+         * @param signal Optional `AbortSignal` to cancel the request
+         */
+        streamHtml(
+            chat_id: number,
+            draft_id: number,
+            stream:
+                | Iterable<string>
+                | AsyncIterable<string>,
+            otherRichMessageDraft?: Omit<
+                Parameters<ApiMethods["sendRichMessageDraft"]>[0],
+                "chat_id" | "draft_id" | "rich_message"
+            >,
+            otherRichMessage?: Omit<
+                Parameters<ApiMethods["sendRichMessage"]>[0],
+                "chat_id" | "rich_message"
+            >,
+            baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
+            signal?: AbortSignal,
+        ): Promise<Message.RichMessageMessage>;
     };
     /**
      * Use this method to stream an iterator of message pieces to the current
@@ -189,6 +276,94 @@ export interface StreamContextExtension {
         >,
         signal?: AbortSignal,
     ): Promise<Message.TextMessage[]>;
+    /**
+     * Use this method to stream an iterator of rich markdown message pieces to
+     * a private chat. Returns a rich message object.
+     *
+     * This is a convenience method built on top of `sendRichMessage` and
+     * `sendRichMessageDraft`. The former method is called once given iterator
+     * completes, and the latter method is called many times while consuming the
+     * iterator and accumulating the strings.
+     *
+     * The draft identifier is set to the current `update_id`. Hence, if you
+     * want to call this method several times from the same handler and/or
+     * middleware pass, then you should make sure that both calls happen
+     * sequentially. Otherwise, clashes between draft identifiers can happen
+     * across the concurrent calls. Alternatively, you can pass a custom
+     * `draft_id` value to the options object for `sendRichMessageDraft` (second
+     * parameter).
+     *
+     * This method consumes the given iterator as fast as possible and updates
+     * the message draft as often as possible. If reading the next chunk of data
+     * is faster than the message draft can be updated, then some calls to
+     * `sendRichMessageDraft` are skipped. This integrates well with [the
+     * auto-retry plugin](https://grammy.dev/plugins/auto-retry) which converts
+     * rate limits into slower API calls. Make sure to install it before
+     * installing this plugin.
+     *
+     * @param stream An iterator of message pieces with optional draft identifiers
+     * @param otherRichMessageDraft Optional remaining parameters for `sendRichMessageDraft` calls
+     * @param otherRichMessage Optional remaining parameters for `sendRichMessage` calls
+     * @param baseInputRichMessage Optional remaining fields of `rich_message` in all API calls
+     * @param signal Optional `AbortSignal` to cancel the request
+     */
+    replyWithMarkdownStream(
+        stream: Iterable<string> | AsyncIterable<string>,
+        otherRichMessageDraft?: Omit<
+            Parameters<ApiMethods["sendRichMessageDraft"]>[0],
+            "chat_id" | "rich_message"
+        >,
+        otherRichMessage?: Omit<
+            Parameters<ApiMethods["sendRichMessage"]>[0],
+            "chat_id" | "rich_message"
+        >,
+        baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
+        signal?: AbortSignal,
+    ): Promise<Message.RichMessageMessage>;
+    /**
+     * Use this method to stream an iterator of rich HTML message pieces to a
+     * private chat. Returns a rich message object.
+     *
+     * This is a convenience method built on top of `sendRichMessage` and
+     * `sendRichMessageDraft`. The former method is called once given iterator
+     * completes, and the latter method is called many times while consuming the
+     * iterator and accumulating the strings.
+     *
+     * The draft identifier is set to the current `update_id`. Hence, if you
+     * want to call this method several times from the same handler and/or
+     * middleware pass, then you should make sure that both calls happen
+     * sequentially. Otherwise, clashes between draft identifiers can happen
+     * across the concurrent calls. Alternatively, you can pass a custom
+     * `draft_id` value to the options object for `sendRichMessageDraft` (second
+     * parameter).
+     *
+     * This method consumes the given iterator as fast as possible and updates
+     * the message draft as often as possible. If reading the next chunk of data
+     * is faster than the message draft can be updated, then some calls to
+     * `sendRichMessageDraft` are skipped. This integrates well with [the
+     * auto-retry plugin](https://grammy.dev/plugins/auto-retry) which converts
+     * rate limits into slower API calls. Make sure to install it before
+     * installing this plugin.
+     *
+     * @param stream An iterator of message pieces with optional draft identifiers
+     * @param otherRichMessageDraft Optional remaining parameters for `sendRichMessageDraft` calls
+     * @param otherRichMessage Optional remaining parameters for `sendRichMessage` calls
+     * @param baseInputRichMessage Optional remaining fields of `rich_message` in all API calls
+     * @param signal Optional `AbortSignal` to cancel the request
+     */
+    replyWithHtmlStream(
+        stream: Iterable<string> | AsyncIterable<string>,
+        otherRichMessageDraft?: Omit<
+            Parameters<ApiMethods["sendRichMessageDraft"]>[0],
+            "chat_id" | "rich_message"
+        >,
+        otherRichMessage?: Omit<
+            Parameters<ApiMethods["sendRichMessage"]>[0],
+            "chat_id" | "rich_message"
+        >,
+        baseInputRichMessage?: Omit<InputRichMessage, "markdown" | "html">,
+        signal?: AbortSignal,
+    ): Promise<Message.RichMessageMessage>;
 }
 
 /** Collection of options for the stream plugin */
@@ -197,6 +372,11 @@ export interface StreamOptions<C extends Context> {
      * Determines the default offset of draft identifiers for
      * `ctx.replyWithStream` calls. For more information on draft identifier
      * offsets, confer {@link StreamContextExtension.replyWithStream}.
+     *
+     * Note that this option has no effect on rich message sending via
+     * {@link StreamContextExtension.replyWithMarkdownStream} or
+     * {@link StreamContextExtension.replyWithHtmlStream}, as both methods let
+     * you specify the draft identifier directly.
      */
     defaultDraftIdOffset?(ctx: C): number;
 }
@@ -221,9 +401,15 @@ export function stream<C extends Context>(
         defaultDraftIdOffset = (ctx) => 256 * ctx.update.update_id,
     } = options;
     return async (ctx, next) => {
-        const { streamMessage: streamMessageApi } = streamApi(ctx.api.raw);
+        const {
+            streamMessage: streamMessageApi,
+            streamMarkdown: streamMarkdownApi,
+            streamHtml: streamHtmlApi,
+        } = streamApi(ctx.api.raw);
 
         ctx.api.streamMessage = streamMessageApi;
+        ctx.api.streamMarkdown = streamMarkdownApi;
+        ctx.api.streamHtml = streamHtmlApi;
         ctx.replyWithStream = async function streamMessage(
             stream,
             otherMessageDraft,
@@ -249,6 +435,60 @@ export function stream<C extends Context>(
                 signal,
             );
         };
+        ctx.replyWithMarkdownStream = async function streamMarkdown(
+            stream,
+            otherRichMessageDraft,
+            otherRichMessage,
+            baseInputRichMessage,
+            signal,
+        ) {
+            const chatId = ctx.chatId;
+            if (chatId === undefined) {
+                throw new Error(
+                    "This update does not belong to a chat, so you cannot call 'streamMarkdown'",
+                );
+            }
+            const msg = ctx.msg;
+            const messageThreadId = msg?.is_topic_message
+                ? { message_thread_id: msg.message_thread_id }
+                : {};
+            return await streamMarkdownApi(
+                chatId,
+                ctx.update.update_id,
+                stream,
+                { ...messageThreadId, ...otherRichMessageDraft },
+                { ...messageThreadId, ...otherRichMessage },
+                baseInputRichMessage,
+                signal,
+            );
+        };
+        ctx.replyWithHtmlStream = async function streamHtml(
+            stream,
+            otherRichMessageDraft,
+            otherRichMessage,
+            baseInputRichMessage,
+            signal,
+        ) {
+            const chatId = ctx.chatId;
+            if (chatId === undefined) {
+                throw new Error(
+                    "This update does not belong to a chat, so you cannot call 'streamHtml'",
+                );
+            }
+            const msg = ctx.msg;
+            const messageThreadId = msg?.is_topic_message
+                ? { message_thread_id: msg.message_thread_id }
+                : {};
+            return await streamHtmlApi(
+                chatId,
+                ctx.update.update_id,
+                stream,
+                { ...messageThreadId, ...otherRichMessageDraft },
+                { ...messageThreadId, ...otherRichMessage },
+                baseInputRichMessage,
+                signal,
+            );
+        };
 
         await next();
     };
@@ -268,8 +508,6 @@ export function stream<C extends Context>(
 export function streamApi(
     rawApi: RawApi,
 ): StreamContextExtension["api"] {
-    type Draft = { id: number; text: string; entities: MessageEntity[] };
-
     return {
         streamMessage: async function streamMessage(
             chat_id,
@@ -279,119 +517,287 @@ export function streamApi(
             otherMessage,
             signal,
         ) {
-            async function* enumerateDrafts(): AsyncGenerator<Draft> {
-                let currentDraftId = 0;
-                let currentByteCount = 0;
-                let currentNegativeEntityOffset = 0;
-                for await (const chunk of stream) {
-                    const { draft_id, text, entities = [] } =
-                        typeof chunk === "string" ? { text: chunk } : chunk;
+            return await streamPlainMessage(
+                chat_id,
+                draft_id_offset,
+                stream,
+                otherMessageDraft,
+                otherMessage,
+                signal,
+            );
+        },
+        streamMarkdown: async function streamMarkdown(
+            chat_id,
+            draft_id,
+            stream,
+            otherRichMessageDraft,
+            otherRichMessage,
+            baseInputRichMessage,
+            signal,
+        ) {
+            return await streamRichMessage(
+                (markdown) => ({ ...baseInputRichMessage, markdown }),
+                chat_id,
+                draft_id,
+                stream,
+                otherRichMessageDraft,
+                otherRichMessage,
+                signal,
+            );
+        },
+        streamHtml: async function streamHtml(
+            chat_id,
+            draft_id,
+            stream,
+            otherRichMessageDraft,
+            otherRichMessage,
+            baseInputRichMessage,
+            signal,
+        ) {
+            return await streamRichMessage(
+                (html) => ({ ...baseInputRichMessage, html }),
+                chat_id,
+                draft_id,
+                stream,
+                otherRichMessageDraft,
+                otherRichMessage,
+                signal,
+            );
+        },
+    };
 
-                    const lastDraftId = currentDraftId;
-                    const addedLength = text.length;
-                    if (draft_id !== undefined) {
-                        currentDraftId = draft_id;
-                    } else if (currentByteCount + addedLength > 4096) {
-                        currentDraftId++;
-                    }
-                    if (lastDraftId === currentDraftId) {
-                        currentByteCount += addedLength;
-                    } else {
-                        currentNegativeEntityOffset += currentByteCount;
-                        currentByteCount = addedLength;
-                    }
+    /**
+     * Helper function for rich message streaming.
+     *
+     * Very simple: start a pull and a push loop. The pull loop updates a draft
+     * string as fast as possible, and notifies the pull loop via a lock. The
+     * pull loop updates the draft which whatever the latest string is, and
+     * sends a message on exit (stream exhausted).
+     */
+    async function streamRichMessage(
+        buildInputRichMessage: (markdownOrHtml: string) => InputRichMessage,
+        chat_id: number,
+        draft_id: number,
+        stream:
+            | Iterable<string>
+            | AsyncIterable<string>,
+        otherRichMessageDraft?: Omit<
+            Parameters<ApiMethods["sendRichMessageDraft"]>[0],
+            "chat_id" | "draft_id" | "rich_message"
+        >,
+        otherRichMessage?: Omit<
+            Parameters<ApiMethods["sendRichMessage"]>[0],
+            "chat_id" | "rich_message"
+        >,
+        signal?: AbortSignal | undefined,
+    ) {
+        let latest: string | undefined = undefined; // present if a new draft is available
 
-                    yield {
-                        id: draft_id_offset + currentDraftId,
-                        text,
-                        entities: entities.map((e) => ({
-                            ...e,
-                            offset: e.offset - currentNegativeEntityOffset,
-                        })),
-                    };
-                }
-            }
+        let lock: PromiseWithResolvers<void> | undefined = undefined; // notify about new data
+        let running = true; // cancel pulling upon error
+        let exhausted = false; // signal completion of stream
 
-            let latest: Draft | undefined = undefined; // draft to be updated
-            const complete: Draft[] = []; // buffer of outgoing messages
-            let lock: PromiseWithResolvers<void> | undefined = undefined; // notify about new data
-            let running = true; // cancel pulling upon error
-            let exhausted = false; // signal completion of stream
-            async function pull() {
-                let current: Draft | undefined;
-                for await (const draft of enumerateDrafts()) {
-                    if (!running || signal?.aborted) break;
-                    if (current === undefined) {
-                        // first chunk
-                        current = draft;
-                    } else if (current.id === draft.id) {
-                        // same draft_id as last chunk
-                        current.text += draft.text;
-                        current.entities.push(...draft.entities);
-                    } else {
-                        // different draft_id than last chunk
-                        complete.push(current);
-                        current = draft;
-                    }
-                    latest = current;
-                    if (lock !== undefined) {
-                        lock.resolve();
-                        lock = undefined;
-                    }
+        async function pull() {
+            let accumulator: string | undefined = undefined;
+            for await (const draft of stream) {
+                if (!running || signal?.aborted) break;
+                if (accumulator === undefined) {
+                    // first chunk
+                    accumulator = draft;
+                } else {
+                    accumulator += draft;
                 }
-                if (current !== undefined) {
-                    complete.push(current);
-                }
-                exhausted = true;
+                latest = accumulator; // make available to push loop
                 if (lock !== undefined) {
                     lock.resolve();
                     lock = undefined;
                 }
             }
+            exhausted = true;
+            if (lock !== undefined) {
+                lock.resolve();
+                lock = undefined;
+            }
+        }
 
-            const messages: Message.TextMessage[] = [];
-            async function push() {
-                try {
-                    while (!exhausted || complete.length > 0) {
-                        let draft: Draft | undefined;
-
-                        // send complete messages
-                        draft = complete.shift();
-                        if (draft !== undefined) {
-                            const message = await rawApi.sendMessage({
-                                chat_id,
-                                text: draft.text,
-                                entities: draft.entities,
-                                ...otherMessage,
-                            }, signal);
-                            messages.push(message);
-                            continue;
-                        }
-
-                        // no messages to send, update latest draft
+        async function push() {
+            let draft = "";
+            try {
+                while (!exhausted) {
+                    if (latest !== undefined) {
                         draft = latest;
-                        if (draft !== undefined) {
-                            latest = undefined;
-                            await rawApi.sendMessageDraft({
-                                chat_id,
-                                draft_id: draft.id,
-                                text: draft.text,
-                                entities: draft.entities,
-                                ...otherMessageDraft,
-                            }, signal);
-                            continue;
-                        }
-
-                        // no messages to send, no draft to update, wait for data
-                        lock = Promise.withResolvers();
-                        await lock.promise;
+                        latest = undefined;
+                        await rawApi.sendRichMessageDraft({
+                            chat_id,
+                            draft_id,
+                            rich_message: buildInputRichMessage(draft),
+                            ...otherRichMessageDraft,
+                        }, signal);
+                        continue;
                     }
-                } finally {
-                    running = false;
+
+                    // no draft to update, wait for data
+                    lock = Promise.withResolvers();
+                    await lock.promise;
+                }
+            } finally {
+                running = false;
+            }
+            // Flush any final data that arrived after the last draft was sent
+            if (latest !== undefined) {
+                draft = latest;
+                latest = undefined;
+            }
+            return await rawApi.sendRichMessage({
+                chat_id,
+                rich_message: buildInputRichMessage(draft),
+                ...otherRichMessage,
+            }, signal);
+        }
+        const [, message] = await Promise.all([pull(), push()]);
+        return message;
+    }
+
+    /**
+     * Helper function for chunked plain message streaming.
+     *
+     * More elaborate than rich message streaming because we support sending
+     * several messages. Same structure as above, but also enumerates draft
+     * identifiers and keeps a buffer of outgoing messages yet to be sent.
+     */
+    async function streamPlainMessage(
+        chat_id: number,
+        draft_id_offset: number,
+        stream:
+            | Iterable<MessageDraftPiece>
+            | AsyncIterable<MessageDraftPiece>,
+        otherMessageDraft?: Omit<
+            Parameters<ApiMethods["sendMessageDraft"]>[0],
+            "chat_id" | "draft_id" | "text"
+        >,
+        otherMessage?: Omit<
+            Parameters<ApiMethods["sendMessage"]>[0],
+            "chat_id" | "text"
+        >,
+        signal?: AbortSignal,
+    ) {
+        type Draft = { id: number; text: string; entities: MessageEntity[] };
+
+        async function* enumerateDrafts(): AsyncGenerator<Draft> {
+            let currentDraftId = 0;
+            let currentByteCount = 0;
+            let currentNegativeEntityOffset = 0;
+            for await (const chunk of stream) {
+                const { draft_id, text, entities = [] } =
+                    typeof chunk === "string" ? { text: chunk } : chunk;
+
+                const lastDraftId = currentDraftId;
+                const addedLength = text.length;
+                if (draft_id !== undefined) {
+                    currentDraftId = draft_id;
+                } else if (currentByteCount + addedLength > 4096) {
+                    currentDraftId++;
+                }
+                if (lastDraftId === currentDraftId) {
+                    currentByteCount += addedLength;
+                } else {
+                    currentNegativeEntityOffset += currentByteCount;
+                    currentByteCount = addedLength;
+                }
+
+                yield {
+                    id: draft_id_offset + currentDraftId,
+                    text,
+                    entities: entities.map((e) => ({
+                        ...e,
+                        offset: e.offset - currentNegativeEntityOffset,
+                    })),
+                };
+            }
+        }
+
+        let latest: Draft | undefined = undefined; // present if a new draft is available
+        const complete: Draft[] = []; // buffer of outgoing messages
+
+        let lock: PromiseWithResolvers<void> | undefined = undefined; // notify about new data
+        let running = true; // cancel pulling upon error
+        let exhausted = false; // signal completion of stream
+        async function pull() {
+            let accumulator: Draft | undefined;
+            for await (const draft of enumerateDrafts()) {
+                if (!running || signal?.aborted) break;
+                if (accumulator === undefined) {
+                    // first chunk
+                    accumulator = draft;
+                } else if (accumulator.id === draft.id) {
+                    // same draft_id as last chunk
+                    accumulator.text += draft.text;
+                    accumulator.entities = accumulator.entities.concat(
+                        draft.entities,
+                    );
+                } else {
+                    // different draft_id than last chunk
+                    complete.push(accumulator);
+                    accumulator = draft;
+                }
+                latest = accumulator;
+                if (lock !== undefined) {
+                    lock.resolve();
+                    lock = undefined;
                 }
             }
-            await Promise.all([pull(), push()]);
-            return messages;
-        },
-    };
+            if (accumulator !== undefined) {
+                complete.push(accumulator);
+            }
+            exhausted = true;
+            if (lock !== undefined) {
+                lock.resolve();
+                lock = undefined;
+            }
+        }
+
+        const messages: Message.TextMessage[] = [];
+        async function push() {
+            try {
+                while (!exhausted || complete.length > 0) {
+                    let draft: Draft | undefined;
+
+                    // send complete messages
+                    draft = complete.shift();
+                    if (draft !== undefined) {
+                        const message = await rawApi.sendMessage({
+                            chat_id,
+                            text: draft.text,
+                            entities: draft.entities,
+                            ...otherMessage,
+                        }, signal);
+                        messages.push(message);
+                        continue;
+                    }
+
+                    // no messages to send, update latest draft
+                    draft = latest;
+                    if (draft !== undefined) {
+                        latest = undefined;
+                        await rawApi.sendMessageDraft({
+                            chat_id,
+                            draft_id: draft.id,
+                            text: draft.text,
+                            entities: draft.entities,
+                            ...otherMessageDraft,
+                        }, signal);
+                        continue;
+                    }
+
+                    // no messages to send, no draft to update, wait for data
+                    lock = Promise.withResolvers();
+                    await lock.promise;
+                }
+            } finally {
+                running = false;
+            }
+        }
+        await Promise.all([pull(), push()]);
+        return messages;
+    }
 }
